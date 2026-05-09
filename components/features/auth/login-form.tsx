@@ -33,7 +33,15 @@ export function LoginForm() {
         <CardContent className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required disabled={pending} />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              disabled={pending}
+              defaultValue="raj@gmail.com"
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
@@ -44,6 +52,7 @@ export function LoginForm() {
               autoComplete="current-password"
               required
               disabled={pending}
+              defaultValue="12345678"
             />
           </div>
         </CardContent>
