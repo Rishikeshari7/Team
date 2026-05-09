@@ -18,6 +18,11 @@ async function startSession(user: { id: string; email: string; name: string }) {
   await setSessionCookie(token);
 }
 
+function logActionError(scope: string, err: unknown) {
+  // Logged on the server only — appears in Vercel runtime logs, never sent to the client.
+  console.error(`[${scope}]`, err);
+}
+
 export async function signupAction(_: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
@@ -44,6 +49,7 @@ export async function signupAction(_: ActionResult | null, formData: FormData): 
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return { ok: false, error: "An account with that email already exists." };
     }
+    logActionError("signupAction", err);
     return { ok: false, error: err instanceof Error ? err.message : "Signup failed" };
   }
 
@@ -60,16 +66,22 @@ export async function loginAction(_: ActionResult | null, formData: FormData): P
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-    select: { id: true, email: true, name: true, passwordHash: true },
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+      select: { id: true, email: true, name: true, passwordHash: true },
+    });
 
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-    return { ok: false, error: "Invalid email or password." };
+    if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      return { ok: false, error: "Invalid email or password." };
+    }
+
+    await startSession({ id: user.id, email: user.email, name: user.name });
+  } catch (err) {
+    logActionError("loginAction", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Login failed" };
   }
 
-  await startSession({ id: user.id, email: user.email, name: user.name });
   redirect("/projects");
 }
 
